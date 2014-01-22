@@ -46,10 +46,6 @@ class VizualizerTrade_Table_Statuses extends Vizualizer_Plugin_Table
     {
         $connection = Vizualizer_Database_Factory::begin("trade");
         try {
-            // 依存テーブルをインストール
-            VizualizerAdmin_Table_Companys::install();
-            VizualizerAdmin_Table_Roles::install();
-
             // テーブルのインストール
             $connection->query(file_get_contents(dirname(__FILE__) . "/../../../sqls/statuses.sql"));
             Vizualizer_Database_Factory::commit($connection);

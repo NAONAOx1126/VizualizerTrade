@@ -23,12 +23,12 @@
  */
 
 /**
- * trade_bill_detailsテーブルの定義クラスです。
+ * trade_reconcilesテーブルの定義クラスです。
  *
- * @package VizualizerAdmin
+ * @package VizualizerTrade
  * @author Naohisa Minagawa <info@vizualizer.jp>
  */
-class VizualizerTrade_Table_BillDetails extends Vizualizer_Plugin_Table
+class VizualizerTrade_Table_Reconciles extends Vizualizer_Plugin_Table
 {
 
     /**
@@ -36,7 +36,7 @@ class VizualizerTrade_Table_BillDetails extends Vizualizer_Plugin_Table
      */
     public function __construct()
     {
-        parent::__construct("trade_bill_details", "trade");
+        parent::__construct("trade_reconciles", "trade");
     }
 
     /**
@@ -48,9 +48,10 @@ class VizualizerTrade_Table_BillDetails extends Vizualizer_Plugin_Table
         try {
             // 依存テーブルをインストール
             VizualizerTrade_Table_Bills::install();
+            VizualizerTrade_Table_Payments::install();
 
             // テーブルのインストール
-            $connection->query(file_get_contents(dirname(__FILE__) . "/../../../sqls/details.sql"));
+            $connection->query(file_get_contents(dirname(__FILE__) . "/../../../sqls/reconciles.sql"));
             Vizualizer_Database_Factory::commit($connection);
         } catch (Exception $e) {
             Vizualizer_Database_Factory::rollback($connection);

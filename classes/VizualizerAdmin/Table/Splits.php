@@ -47,8 +47,8 @@ class VizualizerTrade_Table_Splits extends Vizualizer_Plugin_Table
         $connection = Vizualizer_Database_Factory::begin("trade");
         try {
             // 依存テーブルをインストール
-            VizualizerAdmin_Table_Companys::install();
-            VizualizerAdmin_Table_Roles::install();
+            VizualizerAdmin_Table_CompanyOperators::install();
+            VizualizerTrade_Table_Types::install();
 
             // テーブルのインストール
             $connection->query(file_get_contents(dirname(__FILE__) . "/../../../sqls/splits.sql"));

@@ -52,5 +52,7 @@ class VizualizerTrade
         VizualizerTrade_Table_Splits::install();
         VizualizerTrade_Table_Bills::install();
         VizualizerTrade_Table_BillDetails::install();
+        VizualizerTrade_Table_Payments::install();
+        VizualizerTrade_Table_Reconciles::install();
     }
 }
