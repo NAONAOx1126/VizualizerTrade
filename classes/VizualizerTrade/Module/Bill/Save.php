@@ -59,29 +59,21 @@ class VizualizerTrade_Module_Bill_Save extends Vizualizer_Plugin_Module_Save
                         $model->$key = $value;
                     }
                 }
-                // 支払日は請求日と顧客の締め支払いから自動計算する。
-                if(!empty($model->billing_date)){
-                    // 締め支払いを計算するための顧客情報を取得
-                    $customer = $loader->loadModel("CompanyOperator");
-                    $customer->findByPrimaryKey($model->customer_operator_id);
-                    $company = $customer->company();
-                    // 請求月の計算をするための起算日を取得する。
-                    $baseDate = date("Y-m-01", strtotime($model->billing_date));
-                    // 支払い月の起算日を取得する
-                    if(date("d", strtotime($model->billing_date)) <= $company->limit_day){
-                        $paymentBaseDate = date("Y-m-d", strtotime("+".$company->payment_month."month", strtotime($baseDate)));
-                    }else{
-                        $paymentBaseDate = date("Y-m-d", strtotime("+".($company->payment_month + 1)."month", strtotime($baseDate)));
-                    }
-                    // 支払い期限日を取得する
-                    if($company->payment_day < 99){
-                        $paymentDate = date("Y-m-".sprintf("%02d", $company->payment_day), strtotime($paymentBaseDate));
-                    }else{
-                        $paymentDate = date("Y-m-t", strtotime($paymentBaseDate));
-                    }
-                    $model->payment_date = $paymentDate;
+                $admin = new Vizualizer_Plugin("Admin");
+                if($model->worker_operator_id > 0){
+                    $operator = $admin->loadModel("CompanyOperator");
+                    $operator->findByPrimaryKey($model->worker_operator_id);
+                    $model->worker_company_id = $operator->company_id;
+                }
+                if($model->customer_operator_id > 0){
+                    $operator = $admin->loadModel("CompanyOperator");
+                    $operator->findByPrimaryKey($model->customer_operator_id);
+                    $model->customer_company_id = $operator->company_id;
                 }
                 $model->save();
+
+                $model->calcPaymentDate();
+
                 if (!empty($this->key_prefix)) {
                     $post->set($this->key_prefix . $primary_key, $model->$primary_key);
                 } else {

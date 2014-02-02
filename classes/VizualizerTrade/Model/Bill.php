@@ -99,6 +99,19 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
     }
 
     /**
+     * この請求の消し込みを取得する。
+     *
+     * @return 消し込み
+     */
+    public function reconciles()
+    {
+        $loader = new Vizualizer_Plugin("trade");
+        $reconcile = $loader->loadModel("Reconcile");
+        $reconciles = $reconcile->findAllByBill($this->bill_id);
+        return $reconciles;
+    }
+
+    /**
      * この取引の作業者を取得する。
      *
      * @return 作業者
@@ -150,6 +163,33 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
         return $status;
     }
 
+    public function calcPaymentDate(){
+        // 支払日は請求日と顧客の締め支払いから自動計算する。
+        if(!empty($this->billing_date)){
+            // 締め支払いを計算するための顧客情報を取得
+            $loader = new Vizualizer_Plugin("Admin");
+            $customer = $loader->loadModel("CompanyOperator");
+            $customer->findByPrimaryKey($this->customer_operator_id);
+            $company = $customer->company();
+            // 請求月の計算をするための起算日を取得する。
+            $baseDate = date("Y-m-01", strtotime($this->billing_date));
+            // 支払い月の起算日を取得する
+            if(date("d", strtotime($this->billing_date)) <= $company->limit_day){
+                $paymentBaseDate = date("Y-m-d", strtotime("+".$company->payment_month."month", strtotime($baseDate)));
+            }else{
+                $paymentBaseDate = date("Y-m-d", strtotime("+".($company->payment_month + 1)."month", strtotime($baseDate)));
+            }
+            // 支払い期限日を取得する
+            if($company->payment_day < 99){
+                $paymentDate = date("Y-m-".sprintf("%02d", $company->payment_day), strtotime($paymentBaseDate));
+            }else{
+                $paymentDate = date("Y-m-t", strtotime($paymentBaseDate));
+            }
+            $this->payment_date = $paymentDate;
+            $this->save();
+        }
+    }
+
     /**
      * 明細から合計金額を計算する
      */
@@ -172,6 +212,7 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
         $this->subtotal = $subtotal;
         $this->tax = $tax;
         $this->total = $this->subtotal - $this->discount + $this->tax;
+        $this->payment_total = $this->total - $this->adjust;
         $this->save();
     }
 
@@ -179,7 +220,7 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
      * 取引が分割可能な場合、取引を分割する。
      */
     public function split(){
-        $loader = new Vizualizer_Plugin("trade");
+        $loader = new Vizualizer_Plugin("Trade");
         $orgSplit = $loader->loadModel("Split");
         $orgSplit->findByWorkerCustomerType($this->worker_operator_id, $this->customer_operator_id, $this->type_id);
         if($orgSplit->split_id > 0){
@@ -200,7 +241,18 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
 
                 // フロントから顧客への取引データを作成
                 $bill = $loader->loadModel("Bill", $arrBill);
-                $bill->worker_operator_id = $tradeSplit->contact_operator_id;
+                $bill->worker_operator_id = $orgSplit->contact_operator_id;
+                $admin = new Vizualizer_Plugin("Admin");
+                if($bill->worker_operator_id > 0){
+                    $operator = $admin->loadModel("CompanyOperator");
+                    $operator->findByPrimaryKey($bill->worker_operator_id);
+                    $bill->worker_company_id = $operator->company_id;
+                }
+                if($bill->customer_operator_id > 0){
+                    $operator = $admin->loadModel("CompanyOperator");
+                    $operator->findByPrimaryKey($bill->customer_operator_id);
+                    $bill->customer_company_id = $operator->company_id;
+                }
                 $bill->save();
                 foreach($arrBillDetails as $arrBillDetail){
                     $detail = $loader->loadModel("BillDetail", $arrBillDetail);
@@ -211,81 +263,95 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
 
                 // 作業者からフロントへの取引データを作成（金額の計算はあとで実施）
                 $bill = $loader->loadModel("Bill", $arrBill);
-                $bill->customer_operator_id = $split->contact_operator_id;
+                $bill->customer_operator_id = $orgSplit->contact_operator_id;
+                $bill->price_rate = 100 - $orgSplit->contact_mergin_rate;
+                $bill->subtotal = floor($this->subtotal * $bill->price_rate / 100);
+                $bill->discount = floor($this->discount * $bill->price_rate / 100);
+                $bill->tax = floor($this->tax * $bill->price_rate / 100);
+                $bill->total = floor($this->total * $bill->price_rate / 100);
+                $bill->adjust = floor($this->adjust * $bill->price_rate / 100);
+                $bill->payment_total = floor($this->payment_total * $bill->price_rate / 100);
+                $admin = new Vizualizer_Plugin("Admin");
+                if($bill->worker_operator_id > 0){
+                    $operator = $admin->loadModel("CompanyOperator");
+                    $operator->findByPrimaryKey($bill->worker_operator_id);
+                    $bill->worker_company_id = $operator->company_id;
+                }
+                if($bill->customer_operator_id > 0){
+                    $operator = $admin->loadModel("CompanyOperator");
+                    $operator->findByPrimaryKey($bill->customer_operator_id);
+                    $bill->customer_company_id = $operator->company_id;
+                }
                 $bill->save();
                 foreach($arrBillDetails as $arrBillDetail){
                     $detail = $loader->loadModel("BillDetail", $arrBillDetail);
                     $detail->bill_id = $bill->bill_id;
+                    $detail->price = floor($arrBillDetail["price"] * $bill->price_rate / 100);
                     $detail->save();
                 }
-                $splitted = $this->findAllByRelated($this->bill_id);
-            }
-
-            // 日付／ステータス／金額を再設定
-            foreach($splitted as $split){
-                // 日付とステータスと金額を再設定
-                $split->price_rate = "100";
-                $split->subtotal = $this->subtotal;
-                $split->discount = $this->discount;
-                $split->tax = $this->tax;
-                $split->total = $this->total;
-                $split->start_date = $this->start_date;
-                $split->planed_date = $this->planed_date;
-                $split->ordered_date = $this->ordered_date;
-                $split->delivered_date = $this->delivered_date;
-                $split->billing_date = $this->billing_date;
-                $split->payment_date = $this->payment_date;
-                $split->complete_date = $this->complete_date;
-                $split->status_id = $this->status_id;
-                $split->description = $this->description;
-                foreach($split->details() as $splitDetail){
-                    $detail = $loader->loadModel("BillDetail");
-                    $detail->findByPrimaryKey($splitDetail->related_bill_detail_id);
-                    if($detail->bill_detail_id > 0){
-                        $splitDetail->bill_detail_name = $detail->bill_detail_name;
-                        $splitDetail->price = $detail->price;
-                        $splitDetail->quantity = $detail->quantity;
-                        $splitDetail->unit = $detail->unit;
-                        $splitDetail->tax_type = $detail->tax_type;
-                        $splitDetail->tax_rate = $detail->tax_rate;
-                        $splitDetail->save();
-                    }else{
-                        $splitDetail->delete();
-                    }
-                }
-                foreach($this->details() as $detail){
-                    $splitDetail = $loader->loadModel("BillDetail");
-                    $splitDetail->findByRelated($split->bill_id, $detail->bill_detail_id);
-                    if(!($splitDetail->bill_detail_id > 0)){
-                        $arrBillDetail = $detail->toArray();
-                        unset($arrBillDetail["bill_detail_id"]);
-                        $arrBillDetail["bill_id"] = $splitDetail->bill_id;
-                        $arrBillDetail["related_bill_detail_id"] = $detail->bill_detail_id;
-                        $splitDetail = $loader->loadModel("BillDetail");
-                        foreach($arrBillDetail as $name => $value){
-                            $splitDetail->$name = $value;
-                        }
-                        $splitDetail->save();
-                    }
-                }
-
-                if($split->worker_operator_id == $billSplit->worker_operator_id && $split->customer_operator_id == $tradeSplit->contact_operator_id){
-                    // 作業者からフロントの取引の場合は金額を計算
-                    $split->price_rate = 100 - $tradeSplit->contact_mergin_rate;
-                    $split->subtotal = floor($this->subtotal * $split->price_rate / 100);
-                    $split->discount = floor($this->discount * $split->price_rate / 100);
-                    $split->tax = floor($this->tax * $split->price_rate / 100);
-                    $split->total = floor($this->total * $split->price_rate / 100);
+            }else{
+                // 金額を再設定（日付とステータスは分割時に独立した要素となるため、更新時には対象としない）
+                foreach($splitted as $split){
+                    // 金額を再設定
+                    $split->price_rate = "100";
+                    $split->subtotal = $this->subtotal;
+                    $split->discount = $this->discount;
+                    $split->tax = $this->tax;
+                    $split->total = $this->total;
+                    $split->adjust = $this->adjust;
+                    $split->payment_total = $this->payment_total;
+                    $split->description = $this->description;
                     foreach($split->details() as $splitDetail){
-                        $detail = $loader->loadModel("TradeDetail");
-                        $detail->findByPrimaryKey($splitDetail->related_trade_detail_id);
-                        if($detail->trade_detail_id > 0){
-                            $splitDetail->price = floor($detail->price * $split->price_rate / 100);
+                        $detail = $loader->loadModel("BillDetail");
+                        $detail->findByPrimaryKey($splitDetail->related_bill_detail_id);
+                        if($detail->bill_detail_id > 0){
+                            $splitDetail->bill_detail_name = $detail->bill_detail_name;
+                            $splitDetail->price = $detail->price;
+                            $splitDetail->quantity = $detail->quantity;
+                            $splitDetail->unit = $detail->unit;
+                            $splitDetail->tax_type = $detail->tax_type;
+                            $splitDetail->tax_rate = $detail->tax_rate;
+                            $splitDetail->save();
+                        }else{
+                            $splitDetail->delete();
+                        }
+                    }
+                    foreach($this->details() as $detail){
+                        $splitDetail = $loader->loadModel("BillDetail");
+                        $splitDetail->findByRelated($split->bill_id, $detail->bill_detail_id);
+                        if(!($splitDetail->bill_detail_id > 0)){
+                            $arrBillDetail = $detail->toArray();
+                            unset($arrBillDetail["bill_detail_id"]);
+                            $arrBillDetail["bill_id"] = $splitDetail->bill_id;
+                            $arrBillDetail["related_bill_detail_id"] = $detail->bill_detail_id;
+                            $splitDetail = $loader->loadModel("BillDetail");
+                            foreach($arrBillDetail as $name => $value){
+                                $splitDetail->$name = $value;
+                            }
                             $splitDetail->save();
                         }
                     }
+
+                    if($split->worker_operator_id == $orgSplit->worker_operator_id && $split->customer_operator_id == $orgSplit->contact_operator_id){
+                        // 作業者からフロントの取引の場合は金額を計算
+                        $split->price_rate = 100 - $orgSplit->contact_mergin_rate;
+                        $split->subtotal = floor($this->subtotal * $split->price_rate / 100);
+                        $split->discount = floor($this->discount * $split->price_rate / 100);
+                        $split->tax = floor($this->tax * $split->price_rate / 100);
+                        $split->total = floor($this->total * $split->price_rate / 100);
+                        $split->adjust = floor($this->adjust * $split->price_rate / 100);
+                        $split->payment_total = floor($this->payment_total * $split->price_rate / 100);
+                        foreach($split->details() as $splitDetail){
+                            $detail = $loader->loadModel("BillDetail");
+                            $detail->findByPrimaryKey($splitDetail->related_trade_detail_id);
+                            if($detail->trade_detail_id > 0){
+                                $splitDetail->price = floor($detail->price * $split->price_rate / 100);
+                                $splitDetail->save();
+                            }
+                        }
+                    }
+                    $split->save();
                 }
-                $split->save();
             }
         }
     }

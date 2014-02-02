@@ -44,7 +44,26 @@ class VizualizerTrade_Module_Bill_Pdf_Deliver extends Vizualizer_Plugin_Module_P
 
         foreach($billIds as $billId){
             // 帳票に使うデータを取得
-            $bill = $this->getData("Admin", "Bill", $billId);
+            $bill = $this->getData("Trade", "Bill", $billId);
+            // トランザクションの開始
+            $connection = Vizualizer_Database_Factory::begin("trade");
+            try {
+                if(empty($bill->delivered_date) || $bill->delivered_date == "0000-00-00"){
+                    $bill->delivered_date = date("Y-m-d");
+                }
+                if(empty($bill->deliver_date) || $bill->deliver_date == "0000-00-00"){
+                    $bill->deliver_date = $bill->delivered_date;
+                }
+                if($bill->status_id < 4){
+                    $bill->status_id = 4;
+                }
+                $bill->save();
+                // エラーが無かった場合、処理をコミットする。
+                Vizualizer_Database_Factory::commit($connection);
+            } catch (Exception $e) {
+                Vizualizer_Database_Factory::rollback($connection);
+                throw new Vizualizer_Exception_Database($e);
+            }
             $worker = $bill->worker();
             $workerCompany = $worker->company();
             $customer = $bill->customer();
@@ -95,47 +114,50 @@ class VizualizerTrade_Module_Bill_Pdf_Deliver extends Vizualizer_Plugin_Module_P
             $text .= "電話番号：".$workerCompany->tel1."-".$workerCompany->tel2."-".$workerCompany->tel3;
             $this->boxtext(299, 80, 260, 160, 10, $text);
 
-            // 合計金額を描画
-            $this->text(35, 230, 20, "ご請求金額： ￥".number_format($bill->total)."-", true);
+                    // 合計金額を描画
+            $this->text(35, 270, 20, "ご請求金額： ￥".number_format($bill->total)."-", true);
 
             // 印鑑入力欄を作成
             //$this->rect(491, 98, 50, 50, 0);
             // 印鑑画像を貼付け
             $this->image(493, 100, $workerCompany->stamp, 46, 46);
 
+            // 請求名を表示
+            $this->text(35, 230, 20, "案件名：".$bill->bill_name, true);
+
             // 明細タイトル欄を作成
-            $this->boxtext(35, 255, 316, 12, 10, "商　品　名", true, "center");
-            $this->boxtext(355, 255, 76, 12, 10, "価　格", true, "center");
-            $this->boxtext(435, 255, 36, 12, 10, "数　量", true, "center");
-            $this->boxtext(475, 255, 76, 12, 10, "小　計", true, "center");
+            $this->boxtext(35, 295, 316, 12, 10, "請　求　明　細", true, "center");
+            $this->boxtext(355, 295, 76, 12, 10, "価　格", true, "center");
+            $this->boxtext(435, 295, 36, 12, 10, "数　量", true, "center");
+            $this->boxtext(475, 295, 76, 12, 10, "小　計", true, "center");
             $endOutput = false;
             $details = $bill->details();
-            for($i = 0; $i < 25; $i ++){
+            for($i = 0; $i < 22; $i ++){
                 if($details->valid()){
                     $detail = $details->current();
                     $details->next();
-                    $this->boxtext(35, 271 + 16 * $i, 316, 12, 10, $detail->bill_detail_name, true);
-                    $this->boxtext(355, 271 + 16 * $i, 76, 12, 10, "￥".number_format($detail->price), true, "right");
-                    $this->boxtext(435, 271 + 16 * $i, 36, 12, 10, number_format($detail->quantity), true, "right");
-                    $this->boxtext(475, 271 + 16 * $i, 76, 12, 10, "￥".number_format($detail->price * $detail->quantity), true, "right");
+                    $this->boxtext(35, 311 + 16 * $i, 316, 12, 10, $detail->bill_detail_name, true);
+                    $this->boxtext(355, 311 + 16 * $i, 76, 12, 10, "￥".number_format($detail->price), true, "right");
+                    $this->boxtext(435, 311 + 16 * $i, 36, 12, 10, number_format($detail->quantity), true, "right");
+                    $this->boxtext(475, 311 + 16 * $i, 76, 12, 10, "￥".number_format($detail->price * $detail->quantity), true, "right");
                 }else{
                     if(!$endOutput){
-                        $this->boxtext(35, 271 + 16 * $i, 316, 12, 10, "以　下　余　白", true, "right");
+                        $this->boxtext(35, 311 + 16 * $i, 316, 12, 10, "以　下　余　白", true, "right");
                         $endOutput = true;
                     }else{
-                        $this->boxtext(35, 271 + 16 * $i, 316, 12, 10, "", true);
+                        $this->boxtext(35, 311 + 16 * $i, 316, 12, 10, "", true);
                     }
-                    $this->boxtext(355, 271 + 16 * $i, 76, 12, 10, "", true, "right");
-                    $this->boxtext(435, 271 + 16 * $i, 36, 12, 10, "", true, "right");
-                    $this->boxtext(475, 271 + 16 * $i, 76, 12, 10, "", true, "right");
+                    $this->boxtext(355, 311 + 16 * $i, 76, 12, 10, "", true, "right");
+                    $this->boxtext(435, 311 + 16 * $i, 36, 12, 10, "", true, "right");
+                    $this->boxtext(475, 311 + 16 * $i, 76, 12, 10, "", true, "right");
                 }
             }
-            $this->boxtext(355, 271 + 16 * $i, 116, 12, 10, "小　計", true, "center");
-            $this->boxtext(475, 271 + 16 * $i, 76, 12, 10, "￥".number_format($bill->subtotal), true, "right");
-            $this->boxtext(355, 271 + 16 * ($i + 1), 116, 12, 10, "消　費　税", true, "center");
-            $this->boxtext(475, 271 + 16 * ($i + 1), 76, 12, 10, "￥".number_format($bill->tax), true, "right");
-            $this->boxtext(355, 271 + 16 * ($i + 2), 116, 12, 10, "合　計　金　額", true, "center");
-            $this->boxtext(475, 271 + 16 * ($i + 2), 76, 12, 10, "￥".number_format($bill->total), true, "right");
+            $this->boxtext(355, 311 + 16 * $i, 116, 12, 10, "小　計", true, "center");
+            $this->boxtext(475, 311 + 16 * $i, 76, 12, 10, "￥".number_format($bill->subtotal), true, "right");
+            $this->boxtext(355, 311 + 16 * ($i + 1), 116, 12, 10, "消　費　税", true, "center");
+            $this->boxtext(475, 311 + 16 * ($i + 1), 76, 12, 10, "￥".number_format($bill->tax), true, "right");
+            $this->boxtext(355, 311 + 16 * ($i + 2), 116, 12, 10, "合　計　金　額", true, "center");
+            $this->boxtext(475, 311 + 16 * ($i + 2), 76, 12, 10, "￥".number_format($bill->total), true, "right");
             $this->boxtext(35, 724, 516, 100, 10, "備考：\r\n".$bill->description, true);
         }
 
