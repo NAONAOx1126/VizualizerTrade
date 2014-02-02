@@ -82,6 +82,36 @@ class VizualizerTrade_Model_Reconcile extends Vizualizer_Plugin_Model
      * 消し込み処理を実行する。
      */
     public function reconcile($bill, $payment){
+        // 残額を計算する。
+        $billTotal = $bill->payment_total - $bill->payed_total;
+        $paymentTotal = $payment->payment_total - $payment->reconciled_total;
 
+        // 消し込み額を計算
+        if($billTotal > $paymentTotal){
+            $reconcilesTotal = $paymentTotal;
+        }else{
+            $reconcilesTotal = $billTotal;
+        }
+
+        if($reconcilesTotal > 0){
+            $loader = new Vizualizer_Plugin("trade");
+            $model = $loader->loadModel("Reconcile");
+            $model->bill_id = $bill->bill_id;
+            $model->payment_id = $payment->payment_id;
+            $model->reconciled_total = $reconcilesTotal;
+            $model->save();
+            $bill->payed_total += $reconcilesTotal;
+            if($bill->payment_total <= $bill->payed_total){
+                $bill->status_id = 8;
+                $bill->complete_date = $payment->payment_date;
+            }
+            $bill->save();
+            $payment->reconciled_total += $reconcilesTotal;
+            if($payment->payment_total <= $payment->reconciled_total){
+                $payment->reconciled_flg = 1;
+                $payment->reconciled_time = date("Y-m-d H:i:s");
+            }
+            $payment->save();
+        }
     }
 }
