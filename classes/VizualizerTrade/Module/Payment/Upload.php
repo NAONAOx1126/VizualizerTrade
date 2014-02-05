@@ -40,7 +40,7 @@ class VizualizerTrade_Module_Payment_Upload extends Vizualizer_Plugin_Module_Upl
     protected function check($line, $model, $data)
     {
         $post = Vizualizer::request();
-        if($data[0] == "2"){
+        if($data[0] == "2" && preg_match("/^振込/u", $data[3]) > 0){
             $model->company_id = $post["company_id"];
             $model->payment_date = date("Y-m-d", strtotime(str_replace(".", "-", $data[1])));
             $model->bank_name = $data[5];
@@ -48,6 +48,14 @@ class VizualizerTrade_Module_Payment_Upload extends Vizualizer_Plugin_Module_Upl
             $model->payment_code = $data[7];
             $model->payment_name = $data[4];
             $model->payment_total = $data[9];
+            if(empty($model->payment_name)){
+                $this->errors[] = "振込人名義が設定されていません。";
+                return null;
+            }
+            if(!($model->payment_total > 0)){
+                $this->errors[] = "入金金額が正しくありません";
+                return null;
+            }
             return $model;
         }
         return null;

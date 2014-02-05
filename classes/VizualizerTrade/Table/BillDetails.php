@@ -25,7 +25,7 @@
 /**
  * trade_bill_detailsテーブルの定義クラスです。
  *
- * @package VizualizerAdmin
+ * @package VizualizerTrade
  * @author Naohisa Minagawa <info@vizualizer.jp>
  */
 class VizualizerTrade_Table_BillDetails extends Vizualizer_Plugin_Table
@@ -50,7 +50,7 @@ class VizualizerTrade_Table_BillDetails extends Vizualizer_Plugin_Table
             VizualizerTrade_Table_Bills::install();
 
             // テーブルのインストール
-            $connection->query(file_get_contents(dirname(__FILE__) . "/../../../sqls/details.sql"));
+            $connection->query(file_get_contents(dirname(__FILE__) . "/../../../sqls/bill_details.sql"));
             Vizualizer_Database_Factory::commit($connection);
         } catch (Exception $e) {
             Vizualizer_Database_Factory::rollback($connection);

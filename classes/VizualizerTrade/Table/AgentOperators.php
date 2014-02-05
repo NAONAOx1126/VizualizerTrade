@@ -23,12 +23,12 @@
  */
 
 /**
- * trade_statusesテーブルの定義クラスです。
+ * trade_agent_operatorsテーブルの定義クラスです。
  *
  * @package VizualizerTrade
  * @author Naohisa Minagawa <info@vizualizer.jp>
  */
-class VizualizerTrade_Table_Statuses extends Vizualizer_Plugin_Table
+class VizualizerTrade_Table_AgentOperators extends Vizualizer_Plugin_Table
 {
 
     /**
@@ -36,7 +36,7 @@ class VizualizerTrade_Table_Statuses extends Vizualizer_Plugin_Table
      */
     public function __construct()
     {
-        parent::__construct("trade_statuses", "trade");
+        parent::__construct("trade_agent_operators", "trade");
     }
 
     /**
@@ -46,8 +46,11 @@ class VizualizerTrade_Table_Statuses extends Vizualizer_Plugin_Table
     {
         $connection = Vizualizer_Database_Factory::begin("trade");
         try {
+            // 依存テーブルをインストール
+            VizualizerAdmin_Table_CompanyOperators::install();
+
             // テーブルのインストール
-            $connection->query(file_get_contents(dirname(__FILE__) . "/../../../sqls/statuses.sql"));
+            $connection->query(file_get_contents(dirname(__FILE__) . "/../../../sqls/agent_operators.sql"));
             Vizualizer_Database_Factory::commit($connection);
         } catch (Exception $e) {
             Vizualizer_Database_Factory::rollback($connection);
