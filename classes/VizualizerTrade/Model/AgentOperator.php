@@ -67,9 +67,9 @@ class VizualizerTrade_Model_AgentOperator extends Vizualizer_Plugin_Model
      *
      * @param $agent_opeartor_name 代理担当者名
      */
-    public function findByAgentOperatorName($agent_opeartor_name)
+    public function findByAgentOperatorName($agent_operator_name)
     {
-        $this->findBy(array("agent_opeartor_name" => $agent_opeartor_name));
+        $this->findBy(array("agent_operator_name" => $agent_operator_name));
     }
 
     /**

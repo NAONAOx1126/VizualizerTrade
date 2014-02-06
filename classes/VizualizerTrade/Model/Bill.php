@@ -194,24 +194,24 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
      * 明細から合計金額を計算する
      */
     public function calculate(){
-        $subtotal = 0;
+        $total = 0;
         $tax = 0;
         foreach($this->details() as $detail){
-            $subtotal += $detail->price * $detail->quantity;
-            $intax = floor($detail->price * $detail->tax_rate / 100) * $detail->quantity;
+            $total += $detail->price * $detail->quantity;
+            $intax = $detail->price * $detail->tax_rate / 100 * $detail->quantity;
             switch($detail->tax_type){
-                case 2:
-                    // 内税の場合は小計から減算
-                    $subtotal -= $intax;
                 case 1:
+                    // 外税の場合は合計に加算
+                    $total += $intax;
+                case 2:
                     // 内税／外税の場合は税額を加算
                     $tax += $intax;
                     break;
             }
         }
-        $this->subtotal = $subtotal;
-        $this->tax = $tax;
-        $this->total = $this->subtotal - $this->discount + $this->tax;
+        $this->tax = floor($tax);
+        $this->total = floor($total) - $this->discount;
+        $this->subtotal = floor($total) - floor($tax);
         $this->payment_total = $this->total - $this->adjust;
         $this->save();
     }
