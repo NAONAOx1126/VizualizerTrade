@@ -106,6 +106,6 @@ class VizualizerTrade_Module_Bill_Excel_Download extends Vizualizer_Plugin_Modul
 
     function execute($params)
     {
-        $this->executeImpl($params, "Trade", "Bill", "bills");
+        $this->executeImpl($params, "Trade");
     }
 }
