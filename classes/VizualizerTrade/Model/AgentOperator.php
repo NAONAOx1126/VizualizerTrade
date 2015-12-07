@@ -81,6 +81,7 @@ class VizualizerTrade_Model_AgentOperator extends Vizualizer_Plugin_Model
     {
         $loader = new Vizualizer_Plugin("admin");
         $companyOperator = $loader->loadModel("CompanyOperator");
+        $companyOperator->setIgnoreOperator(true);
         $companyOperator->findByPrimaryKey($this->operator_id);
         return $companyOperator;
     }
