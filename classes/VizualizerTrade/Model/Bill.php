@@ -169,6 +169,7 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
             // 締め支払いを計算するための顧客情報を取得
             $loader = new Vizualizer_Plugin("Admin");
             $customer = $loader->loadModel("CompanyOperator");
+            $customer->setIgnoreOperator(true);
             $customer->findByPrimaryKey($this->customer_operator_id);
             $company = $customer->company();
             // 請求月の計算をするための起算日を取得する。
