@@ -120,6 +120,7 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
     {
         $loader = new Vizualizer_Plugin("admin");
         $companyOperator = $loader->loadModel("CompanyOperator");
+        $companyOperator->setIgnoreOperator(true);
         $companyOperator->findByPrimaryKey($this->worker_operator_id);
         return $companyOperator;
     }
@@ -133,6 +134,7 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
     {
         $loader = new Vizualizer_Plugin("admin");
         $companyOperator = $loader->loadModel("CompanyOperator");
+        $companyOperator->setIgnoreOperator(true);
         $companyOperator->findByPrimaryKey($this->customer_operator_id);
         return $companyOperator;
     }
@@ -246,11 +248,13 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
                 $admin = new Vizualizer_Plugin("Admin");
                 if($bill->worker_operator_id > 0){
                     $operator = $admin->loadModel("CompanyOperator");
+                    $operator->setIgnoreOperator(true);
                     $operator->findByPrimaryKey($bill->worker_operator_id);
                     $bill->worker_company_id = $operator->company_id;
                 }
                 if($bill->customer_operator_id > 0){
                     $operator = $admin->loadModel("CompanyOperator");
+                    $operator->setIgnoreOperator(true);
                     $operator->findByPrimaryKey($bill->customer_operator_id);
                     $bill->customer_company_id = $operator->company_id;
                 }
@@ -275,11 +279,13 @@ class VizualizerTrade_Model_Bill extends Vizualizer_Plugin_Model
                 $admin = new Vizualizer_Plugin("Admin");
                 if($bill->worker_operator_id > 0){
                     $operator = $admin->loadModel("CompanyOperator");
+                    $operator->setIgnoreOperator(true);
                     $operator->findByPrimaryKey($bill->worker_operator_id);
                     $bill->worker_company_id = $operator->company_id;
                 }
                 if($bill->customer_operator_id > 0){
                     $operator = $admin->loadModel("CompanyOperator");
+                    $operator->setIgnoreOperator(true);
                     $operator->findByPrimaryKey($bill->customer_operator_id);
                     $bill->customer_company_id = $operator->company_id;
                 }
