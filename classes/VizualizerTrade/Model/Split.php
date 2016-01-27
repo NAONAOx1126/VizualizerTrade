@@ -55,12 +55,12 @@ class VizualizerTrade_Model_Split extends Vizualizer_Plugin_Model
     /**
      * 作業者IDと顧客IDでデータを取得する。
      *
-     * @param $worker_operator_id 作業者ID
-     * @param $customer_operator_id 顧客ID
-     * @param $type_id 請求種別ID
+     * @param $source_operator_id 請求元ID
+     * @param $dest_operator_id 請求先ID
+     * @param $trade_type 取引種別
      */
-    public function findByWorkerCustomerType($worker_operator_id, $customer_operator_id, $type_id){
-        $this->findBy(array("worker_operator_id" => $worker_operator_id, "customer_operator_id" => $customer_operator_id, "type_id" => $type_id));
+    public function findBySplit($source_operator_id, $dest_operator_id,  $trade_type){
+        $this->findBy(array("source_operator_id" => $source_operator_id, "dest_operator_id" => $dest_operator_id, "trade_type" => $trade_type));
     }
 
     /**
@@ -119,12 +119,12 @@ class VizualizerTrade_Model_Split extends Vizualizer_Plugin_Model
      *
      * @return 作業者
      */
-    public function worker()
+    public function source()
     {
         $loader = new Vizualizer_Plugin("admin");
         $companyOperator = $loader->loadModel("CompanyOperator");
         $companyOperator->setIgnoreOperator(true);
-        $companyOperator->findByPrimaryKey($this->worker_operator_id);
+        $companyOperator->findByPrimaryKey($this->source_operator_id);
         return $companyOperator;
     }
 
@@ -147,12 +147,12 @@ class VizualizerTrade_Model_Split extends Vizualizer_Plugin_Model
      *
      * @return 顧客
      */
-    public function customer()
+    public function dest()
     {
         $loader = new Vizualizer_Plugin("admin");
         $companyOperator = $loader->loadModel("CompanyOperator");
         $companyOperator->setIgnoreOperator(true);
-        $companyOperator->findByPrimaryKey($this->customer_operator_id);
+        $companyOperator->findByPrimaryKey($this->dest_operator_id);
         return $companyOperator;
     }
 
@@ -165,7 +165,7 @@ class VizualizerTrade_Model_Split extends Vizualizer_Plugin_Model
     {
         $loader = new Vizualizer_Plugin("trade");
         $type = $loader->loadModel("Type");
-        $type->findByPrimaryKey($this->type_id);
+        $type->findByPrimaryKey($this->trade_type);
         return $type;
     }
 }
