@@ -28,12 +28,12 @@
  * @package VizualizerTrade
  * @author Naohisa Minagawa <info@vizualizer.jp>
  */
-class VizualizerTrade_Module_Bill_Detail extends Vizualizer_Plugin_Module_Detail
+class VizualizerTrade_Module_Quotation_Detail extends Vizualizer_Plugin_Module_Detail
 {
 
     function execute($params)
     {
         $post = Vizualizer::request();
-        $this->executeImpl("Trade", "Bill", $post["bill_id"], $params->get("result", "bill"));
+        $this->executeImpl("Trade", "Quotation", $post["quotation_id"], $params->get("result", "quotation"));
     }
 }

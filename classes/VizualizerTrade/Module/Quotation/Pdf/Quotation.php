@@ -34,26 +34,26 @@ class VizualizerTrade_Module_Bill_Pdf_Quotation extends Vizualizer_Plugin_Module
     function execute($params)
     {
         $post = Vizualizer::request();
-        if(!is_array($post["bill_ids"])){
-            $billIds = explode(",", $post["bill_ids"]);
+        if(!is_array($post["quotation_ids"])){
+            $quotationIds = explode(",", $post["quotation_ids"]);
         }else{
-            $billIds = $post["bill_ids"];
+            $quotationIds = $post["quotation_ids"];
         }
 
         $this->startDocument();
 
-        foreach($billIds as $billId){
+        foreach($quotationIds as $quotationId){
             // 帳票に使うデータを取得
-            $bill = $this->getData("Trade", "Bill", $billId);
+            $quotation = $this->getData("Trade", "Quotation", $quotationId);
 
             // トランザクションの開始
             $connection = Vizualizer_Database_Factory::begin("trade");
             try {
-                if(empty($bill->quotation_date) || $bill->quotation_date == "0000-00-00"){
-                    $bill->quotation_date = date("Y-m-d");
+                if(empty($quotation->quotation_date) || $quotation->quotation_date == "0000-00-00"){
+                    $quotation->quotation_date = date("Y-m-d");
                 }
-                if($bill->status_id < 2){
-                    $bill->status_id = 2;
+                if($quotation->trade_status < 2){
+                    $quotation->trade_status = 2;
                 }
                 $bill->save();
                 // エラーが無かった場合、処理をコミットする。
@@ -62,10 +62,10 @@ class VizualizerTrade_Module_Bill_Pdf_Quotation extends Vizualizer_Plugin_Module
                 Vizualizer_Database_Factory::rollback($connection);
                 throw new Vizualizer_Exception_Database($e);
             }
-            $worker = $bill->worker();
-            $workerCompany = $worker->company();
-            $customer = $bill->customer();
-            $customerCompany = $customer->company();
+            $source = $bill->source();
+            $sourceCompany = $source->company();
+            $dest = $bill->dest();
+            $destCompany = $dest->company();
 
             // ページの開始
             $this->startPage();
@@ -77,51 +77,51 @@ class VizualizerTrade_Module_Bill_Pdf_Quotation extends Vizualizer_Plugin_Module
             $this->text(241, 35, 20, "見　　積　　書", true);
 
             // 帳票番号を描画
-            $this->text(450, 56, 9, "No：".sprintf("%04d", $customerCompany->company_id)."-".sprintf("%08d", $bill->bill_id), true);
+            $this->text(450, 56, 9, "No：".sprintf("%04d", $destCompany->company_id)."-".sprintf("%08d", $quotation->quotation_id), true);
 
             // 作成日を描画
-            $this->text(450, 68, 9, "お見積作成日：".date("Y年m月d日", strtotime($bill->quotation_date)), true);
+            $this->text(450, 68, 9, "お見積作成日：".date("Y年m月d日", strtotime($quotation->quotation_date)), true);
 
             // 宛先欄を作成
-            $text = "〒".$customerCompany->zip1."-".$customerCompany->zip2."\r\n";
-            $text .= $customerCompany->pref_name().$customerCompany->address1."\r\n";
-            if(!empty($customerCompany->address2)){
-                $text .= $customerCompany->address2."\r\n";
+            $text = "〒".$destCompany->zip1."-".$destCompany->zip2."\r\n";
+            $text .= $destCompany->pref_name().$destCompany->address1."\r\n";
+            if(!empty($destCompany->address2)){
+                $text .= $destCompany->address2."\r\n";
             }
-            $text .= $customerCompany->company_name;
-            if(!empty($customer->operator_name)){
-                $text .= "\r\n\r\n".$customer->operator_name." 様";
+            $text .= $destCompany->company_name;
+            if(!empty($dest->operator_name)){
+                $text .= "\r\n\r\n".$dest->operator_name." 様";
             }else{
                  $text .= " 御中";
             }
             $text .= "\r\n\r\n";
-            $text .= "電話番号：".$customerCompany->tel1."-".$customerCompany->tel2."-".$customerCompany->tel3;
+            $text .= "電話番号：".$destCompany->tel1."-".$destCompany->tel2."-".$destCompany->tel3;
             $this->boxtext(35, 70, 260, 120, 10, $text);
 
             // 差出人欄を作成
-            $text = "〒".$workerCompany->zip1."-".$workerCompany->zip2."\r\n";
-            $text .= $workerCompany->pref_name().$workerCompany->address1."\r\n";
-            if(!empty($workerCompany->address2)){
-                $text .= $workerCompany->address2."\r\n";
+            $text = "〒".$sourceCompany->zip1."-".$sourceCompany->zip2."\r\n";
+            $text .= $sourceCompany->pref_name().$sourceCompany->address1."\r\n";
+            if(!empty($sourceCompany->address2)){
+                $text .= $sourceCompany->address2."\r\n";
             }
-            $text .= $workerCompany->company_name;
-            if(!empty($worker->operator_name)){
-                $text .= "\r\n\r\n担当者：".$worker->operator_name;
+            $text .= $sourceCompany->company_name;
+            if(!empty($source->operator_name)){
+                $text .= "\r\n\r\n担当者：".$source->operator_name;
             }
             $text .= "\r\n\r\n";
-            $text .= "電話番号：".$workerCompany->tel1."-".$workerCompany->tel2."-".$workerCompany->tel3;
+            $text .= "電話番号：".$sourceCompany->tel1."-".$sourceCompany->tel2."-".$sourceCompany->tel3;
             $this->boxtext(299, 80, 260, 160, 10, $text);
 
                     // 合計金額を描画
-            $this->text(35, 270, 20, "お見積金額： ￥".number_format($bill->total)."-", true);
+            $this->text(35, 270, 20, "お見積金額： ￥".number_format($quotation->total)."-", true);
 
             // 印鑑入力欄を作成
             //$this->rect(491, 98, 50, 50, 0);
             // 印鑑画像を貼付け
-            $this->image(493, 100, $workerCompany->stamp, 46, 46);
+            $this->image(493, 100, $sourceCompany->stamp, 46, 46);
 
             // 請求名を表示
-            $this->text(35, 230, 20, "案件名：".$bill->bill_name, true);
+            $this->text(35, 230, 20, "案件名：".$quotation->trade_name, true);
 
             // 明細タイトル欄を作成
             $this->boxtext(35, 295, 316, 12, 10, "請　求　明　細", true, "center");
@@ -134,7 +134,7 @@ class VizualizerTrade_Module_Bill_Pdf_Quotation extends Vizualizer_Plugin_Module
                 if($details->valid()){
                     $detail = $details->current();
                     $details->next();
-                    $this->boxtext(35, 311 + 16 * $i, 316, 12, 10, $detail->bill_detail_name, true);
+                    $this->boxtext(35, 311 + 16 * $i, 316, 12, 10, $detail->product_name, true);
                     $this->boxtext(355, 311 + 16 * $i, 76, 12, 10, "￥".number_format($detail->price), true, "right");
                     $this->boxtext(435, 311 + 16 * $i, 36, 12, 10, number_format($detail->quantity), true, "right");
                     $this->boxtext(475, 311 + 16 * $i, 76, 12, 10, "￥".number_format($detail->price * $detail->quantity), true, "right");
@@ -151,12 +151,12 @@ class VizualizerTrade_Module_Bill_Pdf_Quotation extends Vizualizer_Plugin_Module
                 }
             }
             $this->boxtext(355, 311 + 16 * $i, 116, 12, 10, "小　計", true, "center");
-            $this->boxtext(475, 311 + 16 * $i, 76, 12, 10, "￥".number_format($bill->subtotal), true, "right");
+            $this->boxtext(475, 311 + 16 * $i, 76, 12, 10, "￥".number_format($quotation->subtotal), true, "right");
             $this->boxtext(355, 311 + 16 * ($i + 1), 116, 12, 10, "消　費　税", true, "center");
-            $this->boxtext(475, 311 + 16 * ($i + 1), 76, 12, 10, "￥".number_format($bill->tax), true, "right");
+            $this->boxtext(475, 311 + 16 * ($i + 1), 76, 12, 10, "￥".number_format($quotation->tax), true, "right");
             $this->boxtext(355, 311 + 16 * ($i + 2), 116, 12, 10, "合　計　金　額", true, "center");
-            $this->boxtext(475, 311 + 16 * ($i + 2), 76, 12, 10, "￥".number_format($bill->total), true, "right");
-            $this->boxtext(35, 724, 516, 100, 10, "備考：\r\n".$bill->description, true);
+            $this->boxtext(475, 311 + 16 * ($i + 2), 76, 12, 10, "￥".number_format($quotation->total), true, "right");
+            $this->boxtext(35, 724, 516, 100, 10, "備考：\r\n".$quotation->description, true);
         }
 
         // PDFを出力

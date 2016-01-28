@@ -28,11 +28,11 @@
  * @package VizualizerTrade
  * @author Naohisa Minagawa <info@vizualizer.jp>
  */
-class VizualizerTrade_Module_Bill_Delete extends Vizualizer_Plugin_Module_Delete
+class VizualizerTrade_Module_Quotation_Delete extends Vizualizer_Plugin_Module_Delete
 {
 
     function execute($params)
     {
-        $this->executeImpl("Trade", "Bill", "bill_id");
+        $this->executeImpl("Trade", "Quotation", "quotation_id");
     }
 }

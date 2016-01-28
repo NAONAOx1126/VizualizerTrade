@@ -28,7 +28,7 @@
  * @package VizualizerTrade
  * @author Naohisa Minagawa <info@vizualizer.jp>
  */
-class VizualizerTrade_Model_BillDetail extends Vizualizer_Plugin_Model
+class VizualizerTrade_Model_QuotationDetail extends Vizualizer_Plugin_Model
 {
 
     /**
@@ -39,49 +39,38 @@ class VizualizerTrade_Model_BillDetail extends Vizualizer_Plugin_Model
     public function __construct($values = array())
     {
         $loader = new Vizualizer_Plugin("trade");
-        parent::__construct($loader->loadTable("BillDetails"), $values);
+        parent::__construct($loader->loadTable("QuotationDetails"), $values);
     }
 
     /**
      * 主キーでデータを取得する。
      *
-     * @param $trade_detail_id 請求明細ID
+     * @param $quotation_detail_id 見積明細ID
      */
-    public function findByPrimaryKey($bill_detail_id)
+    public function findByPrimaryKey($quotation_detail_id)
     {
-        $this->findBy(array("bill_detail_id" => $bill_detail_id));
-    }
-
-    /**
-     * 関連請求明細と現請求でデータを取得する。
-     *
-     * @param $bill_id 請求ID
-     * @param $bill_detail_id 関連請求明細ID
-     */
-    public function findByRelated($bill_id, $bill_detail_id)
-    {
-        $this->findBy(array("bill_id" => $bill_id, "related_bill_detail_id" => $bill_detail_id));
+        $this->findBy(array("quotation_detail_id" => $quotation_detail_id));
     }
 
     /**
      * 請求IDでデータを取得する。
      *
-     * @param $bill_id 請求ID
+     * @param $quotation_id 見積ID
      */
-    public function findAllByBill($bill_id){
-        return $this->findAllBy(array("bill_id" => $bill_id));
+    public function findAllByQuotation($quotation_id){
+        return $this->findAllBy(array("quotation_id" => $quotation_id));
     }
 
     /**
-     * この請求明細の請求を取得する。
+     * この請求明細の見積を取得する。
      *
-     * @return 請求
+     * @return 見積
      */
-    public function bill()
+    public function quotation()
     {
         $loader = new Vizualizer_Plugin("trade");
-        $bill = $loader->loadModel("Bill");
-        $bill->findByPrimaryKey($this->bill_id);
-        return $bill;
+        $quotation = $loader->loadModel("Quotation");
+        $quotation->findByPrimaryKey($this->quotation_id);
+        return $quotation;
     }
 }
