@@ -140,7 +140,7 @@ class VizualizerTrade_Module_Quotation_Pdf_Quotation extends Vizualizer_Plugin_M
                     $details->next();
                     $this->boxtext(35, 351 + 16 * $i, 320, 16, 10, $detail->product_name, true);
                     $this->boxtext(355, 351 + 16 * $i, 80, 16, 10, "￥".number_format($detail->price), true, "right");
-                    $this->boxtext(435, 351 + 16 * $i, 40, 16, 10, number_format($detail->quantity), true, "right");
+                    $this->boxtext(435, 351 + 16 * $i, 40, 16, 10, number_format($detail->quantity).$detail->unit, true, "right");
                     $this->boxtext(475, 351 + 16 * $i, 80, 16, 10, "￥".number_format($detail->price * $detail->quantity), true, "right");
                 }else{
                     if(!$endOutput){
