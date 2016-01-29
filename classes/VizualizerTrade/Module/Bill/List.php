@@ -33,16 +33,6 @@ class VizualizerTrade_Module_Bill_List extends Vizualizer_Plugin_Module_List
 
     function execute($params)
     {
-        $loader = new Vizualizer_Plugin("Trade");
-        $bill = $loader->loadModel("Bill");
-        $bills = $bill->findAllBy(array());
-        $relatedIds = array();
-        foreach($bills as $bill){
-            $relatedIds[$bill->related_bill_id] = $bill->related_bill_id;
-        }
-        if(!empty($relatedIds)){
-            $this->addCondition("nin:bill_id", array_values($relatedIds));
-        }
         $this->executeImpl($params, "Trade", "Bill", $params->get("result", "bills"));
     }
 }
