@@ -52,18 +52,19 @@ class VizualizerTrade_Model_Order extends Vizualizer_Plugin_Model
         $admin = new Vizualizer_Plugin("Admin");
         if($this->source_operator_id > 0){
             $operator = $admin->loadModel("CompanyOperator");
+            $operator->setIgnoreOperator(true);
             $operator->findByPrimaryKey($this->source_operator_id);
             $this->source_company_id = $operator->company_id;
         } else {
             $this->source_company_id = "";
-            $post->set("source_company_id", "");
         }
         if($this->dest_operator_id > 0){
             $operator = $admin->loadModel("CompanyOperator");
+            $operator->setIgnoreOperator(true);
             $operator->findByPrimaryKey($this->dest_operator_id);
             $this->dest_company_id = $operator->company_id;
         } else {
-            $this->dest_company_id = $operator->company_id;
+            $this->dest_company_id = "";
         }
 
         // 保存を実行する。
@@ -76,25 +77,41 @@ class VizualizerTrade_Model_Order extends Vizualizer_Plugin_Model
      * @return order
      */
     public function copy() {
-        // 請求元から窓口への見積をコピーして作成する。
-        $modelName = strtoupper(substr($this->orderType, 0, 1)).strtolower(substr($this->orderType, 1));
-        $model = $loader->loadModel($modelName);
-        $modelPrimaryKey = $this->orderType."_id";
-        foreach ($this->toArray() as $key => $value) {
-            if ($key != $modelPrimaryKey) {
-                $model->$key = $value;
-            }
-        }
-        $model->save();
-        foreach ($this->details() as $detail) {
-            $modelDetail = $loader->loadModel($modelName."Detail");
-            foreach ($detail->toArray() as $key => $value) {
-                if ($key != $type."_detail_id") {
-                    $modelDetail->$key = $value;
+        // トランザクションの開始
+        $connection = Vizualizer_Database_Factory::begin("trade");
+        try {
+            // 請求元から窓口への見積をコピーして作成する。
+            $modelName = strtoupper(substr($this->orderType, 0, 1)).strtolower(substr($this->orderType, 1));
+            $loader = new Vizualizer_Plugin("Trade");
+            $model = $loader->loadModel($modelName);
+            $modelPrimaryKey = $this->orderType."_id";
+            foreach ($this->toArray() as $key => $value) {
+                if ($key != $modelPrimaryKey) {
+                    $model->$key = $value;
                 }
             }
-            $modelDetail->$modelPrimaryKey = $model->$modelPrimaryKey;
-            $modelDetail->save();
+            $model->save();
+            // エラーが無かった場合、処理をコミットする。
+            Vizualizer_Database_Factory::commit($connection);
+            // トランザクションの開始
+            $connection = Vizualizer_Database_Factory::begin("trade");
+            foreach ($this->details() as $detail) {
+                $modelDetail = $loader->loadModel($modelName."Detail");
+                foreach ($detail->toArray() as $key => $value) {
+                    if ($key != $type."_detail_id") {
+                        $modelDetail->$key = $value;
+                    }
+                }
+                $modelDetail->$modelPrimaryKey = $model->$modelPrimaryKey;
+                $modelDetail->save();
+            }
+
+            // エラーが無かった場合、処理をコミットする。
+            Vizualizer_Database_Factory::commit($connection);
+        } catch (Exception $e) {
+            // エラーが無かった場合、処理をコミットする。
+            Vizualizer_Database_Factory::rollback($connection);
+            throw $e;
         }
 
         return $model;
@@ -174,23 +191,34 @@ class VizualizerTrade_Model_Order extends Vizualizer_Plugin_Model
     public function calculate(){
         $total = 0;
         $tax = 0;
-        foreach($this->details() as $detail){
-            $total += $detail->price * $detail->quantity;
-            $intax = $detail->price * $detail->tax_rate / 100 * $detail->quantity;
-            switch($detail->tax_type){
-                case 1:
-                    // 外税の場合は合計に加算
-                    $total += $intax;
-                case 2:
-                    // 内税／外税の場合は税額を加算
-                    $tax += $intax;
-                    break;
+        // トランザクションの開始
+        $connection = Vizualizer_Database_Factory::begin("trade");
+        try {
+            foreach($this->details() as $detail){
+                $total += $detail->price * $detail->quantity;
+                $intax = $detail->price * $detail->tax_rate / 100 * $detail->quantity;
+                switch($detail->tax_type){
+                    case 1:
+                        // 外税の場合は合計に加算
+                        $total += $intax;
+                    case 2:
+                        // 内税／外税の場合は税額を加算
+                        $tax += $intax;
+                        break;
+                }
             }
+            $this->tax = floor($tax);
+            $this->total = floor($total) - $this->discount + $this->adjust;
+            $this->subtotal = floor($total) - floor($tax);
+            $this->save();
+
+            // エラーが無かった場合、処理をコミットする。
+            Vizualizer_Database_Factory::commit($connection);
+        } catch (Exception $e) {
+            // エラーが無かった場合、処理をコミットする。
+            Vizualizer_Database_Factory::rollback($connection);
+            throw $e;
         }
-        $this->tax = floor($tax);
-        $this->total = floor($total) - $this->discount + $this->adjust;
-        $this->subtotal = floor($total) - floor($tax);
-        $this->save();
     }
 
     /**
@@ -202,19 +230,32 @@ class VizualizerTrade_Model_Order extends Vizualizer_Plugin_Model
         $split->findBySplit($this->source_operator_id, $this->dest_operator_id, $this->trade_type);
         if($split->split_id > 0){
             $model = $this->copy();
-            // 請求先を窓口に変更
-            $model->dest_operator_id = $split->contact_operator_id;
-            $model->save();
-            foreach ($model->details() as $detail) {
-                $detail->price = floor($detail->price * (100 - $split->contact_mergin_rate));
-                $detail->save();
+
+            // トランザクションの開始
+            $connection = Vizualizer_Database_Factory::begin("trade");
+            try {
+                // 請求先を窓口に変更
+                $model->dest_operator_id = $split->contact_operator_id;
+                $model->save();
+                foreach ($model->details() as $detail) {
+                    $detail->price = floor($detail->price * (100 - $split->contact_mergin_rate) / 100);
+                    $detail->save();
+                }
+
+                // コピー元の請求元を窓口に変更
+                $this->source_operator_id = $split->contact_operator_id;
+                $this->save();
+
+                // エラーが無かった場合、処理をコミットする。
+                Vizualizer_Database_Factory::commit($connection);
+            } catch (Exception $e) {
+                // エラーが無かった場合、処理をコミットする。
+                Vizualizer_Database_Factory::rollback($connection);
+                throw $e;
             }
+
             // 登録後に再計算を実施
             $model->calculate();
-
-            // コピー元の請求元を窓口に変更
-            $this->source_operator_id = $split->contact_operator_id;
-            $this->save();
         }
     }
 }

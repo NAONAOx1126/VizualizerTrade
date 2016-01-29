@@ -81,12 +81,12 @@ class VizualizerTrade_Module_Bill_Excel_Download extends Vizualizer_Plugin_Modul
             if(!empty($bill->complete_date)){
                 $sheet->setCellValue('C'.$line, date("Y年m月d日", strtotime($bill->complete_date)));
             }
-            $sheet->setCellValue('D'.$line, $bill->worker()->company()->company_name." ".$bill->worker()->operator_name);
-            $sheet->setCellValue('E'.$line, $bill->customer()->company()->company_name." ".$bill->customer()->operator_name);
-            $sheet->setCellValue('F'.$line, $bill->bill_name);
+            $sheet->setCellValue('D'.$line, $bill->source()->company()->company_name." ".$bill->source()->operator_name);
+            $sheet->setCellValue('E'.$line, $bill->dest()->company()->company_name." ".$bill->dest()->operator_name);
+            $sheet->setCellValue('F'.$line, $bill->trade_name);
             $sheet->setCellValue('G'.$line, $bill->total);
             $sheet->getStyleByColumnAndRow(7, $line)->getNumberFormat()->setFormatCode("¥#,##0;¥-#,##0");
-            $sheet->setCellValue('H'.$line, $bill->payment_total);
+            $sheet->setCellValue('H'.$line, $bill->payed_total);
             $sheet->getStyleByColumnAndRow(8, $line)->getNumberFormat()->setFormatCode("¥#,##0;¥-#,##0");
             $sheet->getStyle('A'.$line.':H'.$line)->getBorders()->getAllBorders()->setBorderStyle(PHPExcel_Style_Border::BORDER_THIN);
         }

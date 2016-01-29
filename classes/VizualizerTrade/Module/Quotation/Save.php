@@ -39,10 +39,16 @@ class VizualizerTrade_Module_Quotation_Save extends Vizualizer_Plugin_Module_Sav
             $connection = Vizualizer_Database_Factory::begin("trade");
 
             try {
+                $loader = new Vizualizer_Plugin("Trade");
+                $model = $loader->loadModel("Quotation");
+                if ($post["quotation_id"] > 0) {
+                    $model->findByPrimaryKey($post["quotation_id"]);
+                }
+                foreach ($post as $key => $value) {
+                    $model->$key = $value;
+                }
                 // 取引データを取得し、保存する。
                 $model->save();
-
-                $model->calcPaymentDate();
 
                 $details = $model->details();
                 foreach($details as $detail) {
@@ -66,23 +72,15 @@ class VizualizerTrade_Module_Quotation_Save extends Vizualizer_Plugin_Module_Sav
                 // エラーが無かった場合、処理をコミットする。
                 Vizualizer_Database_Factory::commit($connection);
 
-                // トランザクションの開始
-                $connection = Vizualizer_Database_Factory::begin("trade");
+                $post->set("quotation_id", $model->quotation_id);
 
                 // 登録後に再計算を実施
                 $model->calculate();
 
-                // エラーが無かった場合、処理をコミットする。
-                Vizualizer_Database_Factory::commit($connection);
-
-                // トランザクションの開始
-                $connection = Vizualizer_Database_Factory::begin("trade");
-
                 // 登録後に分割可能な場合は分割を実施
                 $model->split();
 
-                // エラーが無かった場合、処理をコミットする。
-                Vizualizer_Database_Factory::commit($connection);
+                $model->toBill();
             } catch (Exception $e) {
                 Vizualizer_Database_Factory::rollback($connection);
                 throw new Vizualizer_Exception_Database($e);

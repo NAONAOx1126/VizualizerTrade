@@ -52,4 +52,47 @@ class VizualizerTrade_Model_Quotation extends VizualizerTrade_Model_Order
     {
         $this->findBy(array("quotation_id" => $quotation_id));
     }
+
+    /**
+     * データを請求にコピーする。
+     */
+    public function toBill()
+    {
+        if ($this->trade_status == 3) {
+            $loader = new Vizualizer_Plugin("Trade");
+            $model = $loader->loadModel("Bill");
+            $model->findBy(array("quotation_id" => $this->quotation_id));
+            if (!($model->bill_id > 0)) {
+                // トランザクションの開始
+                $connection = Vizualizer_Database_Factory::begin("trade");
+                try {
+                    // 請求元から窓口への見積をコピーして作成する。
+                    $model = $loader->loadModel("Bill");
+                    foreach ($this->toArray() as $key => $value) {
+                        $model->$key = $value;
+                    }
+                    $model->save();
+                    // エラーが無かった場合、処理をコミットする。
+                    Vizualizer_Database_Factory::commit($connection);
+                    // トランザクションの開始
+                    $connection = Vizualizer_Database_Factory::begin("trade");
+                    foreach ($this->details() as $detail) {
+                        $modelDetail = $loader->loadModel("BillDetail");
+                        foreach ($detail->toArray() as $key => $value) {
+                            $modelDetail->$key = $value;
+                        }
+                        $modelDetail->bill_id = $model->bill_id;
+                        $modelDetail->save();
+                    }
+
+                    // エラーが無かった場合、処理をコミットする。
+                    Vizualizer_Database_Factory::commit($connection);
+                } catch (Exception $e) {
+                    // エラーが無かった場合、処理をコミットする。
+                    Vizualizer_Database_Factory::rollback($connection);
+                    throw $e;
+                }
+            }
+        }
+    }
 }

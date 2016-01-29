@@ -39,126 +39,46 @@ class VizualizerTrade_Module_Bill_Save extends Vizualizer_Plugin_Module_Save
             $connection = Vizualizer_Database_Factory::begin("trade");
 
             try {
-                // 取引データを取得し、保存する。
                 $loader = new Vizualizer_Plugin("Trade");
                 $model = $loader->loadModel("Bill");
-                $primary_key = "bill_id";
-                if (!empty($post[$this->key_prefix . $primary_key])) {
-                    $model->findByPrimaryKey($post[$this->key_prefix . $primary_key]);
-                    if (!($model->$primary_key > 0)) {
-                        $model = $loader->loadModel("Bill", array($primary_key => $post[$this->key_prefix . $primary_key]));
-                    }
+                if ($post["bill_id"] > 0) {
+                    $model->findByPrimaryKey($post["bill_id"]);
                 }
                 foreach ($post as $key => $value) {
-                    if (!empty($this->key_prefix)) {
-                        if (substr($key, 0, strlen($this->key_prefix)) == $this->key_prefix) {
-                            $key = preg_replace("/^" . $this->key_prefix . "/", "", $key);
-                            $model->$key = $value;
-                        }
-                    } else {
-                        $model->$key = $value;
-                    }
+                    $model->$key = $value;
                 }
-                $admin = new Vizualizer_Plugin("Admin");
-                if($model->worker_operator_id > 0){
-                    $operator = $admin->loadModel("CompanyOperator");
-                    $operator->findByPrimaryKey($model->worker_operator_id);
-                    $model->worker_company_id = $operator->company_id;
-                }
-                if($model->customer_operator_id > 0){
-                    $operator = $admin->loadModel("CompanyOperator");
-                    $operator->findByPrimaryKey($model->customer_operator_id);
-                    $model->customer_company_id = $operator->company_id;
-                }
+                // 取引データを取得し、保存する。
                 $model->save();
 
-                $model->calcPaymentDate();
-
-                if (!empty($this->key_prefix)) {
-                    $post->set($this->key_prefix . $primary_key, $model->$primary_key);
-                } else {
-                    $post->set($primary_key, $model->$primary_key);
-                }
-
-                $bill = $model;
                 $details = $model->details();
-                $inputs = array();
-                foreach($post["details"] as $detail){
-                    if(!empty($detail["bill_detail_name"]) && is_numeric($detail["price"]) && $detail["quantity"] > 0){
-                        $inputs[] = $detail;
+                foreach($details as $detail) {
+                    $detail->delete();
+                }
+                $details = $post["details"];
+                foreach($details as $index => $data){
+                    if(!empty($data["product_name"]) && is_numeric($data["price"]) && $data["quantity"] > 0){
+                        $detail = $loader->loadModel("BillDetail");
+                        $detail->bill_id = $model->bill_id;
+                        foreach ($data as $key => $value) {
+                            $detail->$key = $value;
+                        }
+                        $detail->save();
+                        $details[$index]["bill_id"] = $detail->bill_id;
+                        $details[$index]["bill_detail_id"] = $detail->bill_detail_id;
                     }
                 }
-
-                $index = 0;
-                foreach ($details as $model) {
-                    $primary_key = "bill_detail_id";
-                    if ($index < count($inputs)) {
-                        foreach ($inputs[$index] as $key => $value) {
-                            if (!empty($this->key_prefix)) {
-                                if (substr($key, 0, strlen($this->key_prefix)) == $this->key_prefix) {
-                                    $key = preg_replace("/^" . $this->key_prefix . "/", "", $key);
-                                    $model->$key = $value;
-                                }
-                            } else {
-                                $model->$key = $value;
-                            }
-                        }
-                        $model->save();
-                        if (!empty($this->key_prefix)) {
-                            $inputs[$index][$this->key_prefix . $primary_key] = $model->$primary_key;
-                        } else {
-                            $inputs[$index][$primary_key] = $model->$primary_key;
-                        }
-                        $index ++;
-                    } else {
-                        $model->delete();
-                    }
-                }
-                if ($index <= count($inputs)) {
-                    $primary_key = "bill_detail_id";
-                    for ($i = $index; $i < count($inputs); $i ++) {
-                        $model = $loader->loadModel("BillDetail");
-                        $model->bill_id = $bill->bill_id;
-                        foreach ($inputs[$i] as $key => $value) {
-                            if (!empty($this->key_prefix)) {
-                                if (substr($key, 0, strlen($this->key_prefix)) == $this->key_prefix) {
-                                    $key = preg_replace("/^" . $this->key_prefix . "/", "", $key);
-                                    $model->$key = $value;
-                                }
-                            } else {
-                                $model->$key = $value;
-                            }
-                        }
-                        $model->save();
-                        if (!empty($this->key_prefix)) {
-                            $inputs[$i][$this->key_prefix . $primary_key] = $model->$primary_key;
-                        } else {
-                            $inputs[$i][$primary_key] = $model->$primary_key;
-                        }
-                    }
-                }
-                $post->set("details", $inputs);
+                $post->set("details", $details);
 
                 // エラーが無かった場合、処理をコミットする。
                 Vizualizer_Database_Factory::commit($connection);
 
-                // トランザクションの開始
-                $connection = Vizualizer_Database_Factory::begin("trade");
+                $post->set("bill_id", $model->bill_id);
 
                 // 登録後に再計算を実施
-                $bill->calculate();
-
-                // エラーが無かった場合、処理をコミットする。
-                Vizualizer_Database_Factory::commit($connection);
-
-                // トランザクションの開始
-                $connection = Vizualizer_Database_Factory::begin("trade");
+                $model->calculate();
 
                 // 登録後に分割可能な場合は分割を実施
-                $bill->split();
-
-                // エラーが無かった場合、処理をコミットする。
-                Vizualizer_Database_Factory::commit($connection);
+                $model->split();
             } catch (Exception $e) {
                 Vizualizer_Database_Factory::rollback($connection);
                 throw new Vizualizer_Exception_Database($e);
