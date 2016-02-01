@@ -72,17 +72,17 @@ class VizualizerTrade_Module_Quotation_Pdf_Quotation extends Vizualizer_Plugin_M
 
             // ロゴを貼付け
             if (!empty($sourceCompany->logo)) {
-                $this->image(270, 32, $sourceCompany->logo, 200, 50);
+                $this->image(385, 32, $sourceCompany->logo, 170, 0);
             }
 
             // タイトルを描画
             $this->text(241, 248, 20, "御　見　積　書", true);
 
             // 帳票番号を描画
-            $this->text(450, 88, 9, "No：".sprintf("%04d", $destCompany->company_id)."-".sprintf("%08d", $quotation->quotation_id), true);
+            $this->text(428, 297, 9, "No：".sprintf("%04d", $destCompany->company_id)."-".sprintf("%08d", $quotation->quotation_id), true);
 
             // 作成日を描画
-            $this->text(450, 100, 9, "お見積作成日：".date("Y年m月d日", strtotime($quotation->quotation_date)), true);
+            $this->text(428, 309, 9, "お見積作成日：".date("Y年m月d日", strtotime($quotation->quotation_date)), true);
 
             // 宛先欄を作成
             $text = "〒".$destCompany->zip1."-".$destCompany->zip2."\r\n\r\n";
@@ -110,7 +110,7 @@ class VizualizerTrade_Module_Quotation_Pdf_Quotation extends Vizualizer_Plugin_M
             if(!empty($source->operator_name)){
                 $text .= "\r\n\r\n\r\n\r\n担当者：".$source->operator_name;
             }
-            $this->boxtext(339, 96, 260, 160, 10, $text);
+            $this->boxtext(385, 96, 260, 160, 8, $text);
 
                     // 合計金額を描画
             $this->text(35, 310, 20, "お見積金額： ￥".number_format($quotation->total)."-", true);
@@ -119,11 +119,11 @@ class VizualizerTrade_Module_Quotation_Pdf_Quotation extends Vizualizer_Plugin_M
             //$this->rect(491, 98, 50, 50, 0);
             // 印鑑画像を貼付け
             if (!empty($sourceCompany->stamp)) {
-                $this->image(440, 132, $sourceCompany->stamp, 46, 46);
+                $this->image(485, 110, $sourceCompany->stamp, 70, 70);
             }
 
             // 請求名を表示
-            $this->text(35, 278, 20, "案件名：".$quotation->trade_name, true);
+            $this->text(35, 285, 16, "案件名： ".$quotation->trade_name, true);
 
             $this->line(35, 323, 555, 323, 1, array(3, 3));
 

@@ -74,17 +74,17 @@ class VizualizerTrade_Module_Bill_Pdf_Bill extends Vizualizer_Plugin_Module_Pdf
 
             // ロゴを貼付け
             if (!empty($sourceCompany->logo)) {
-                $this->image(270, 32, $sourceCompany->logo, 200, 50);
+                $this->image(385, 32, $sourceCompany->logo, 170, 0);
             }
 
             // タイトルを描画
             $this->text(241, 248, 20, "御　請　求　書", true);
 
             // 帳票番号を描画
-            $this->text(450, 88, 9, "No：".sprintf("%04d", $destCompany->company_id)."-".sprintf("%08d", $bill->quotation_id), true);
+            $this->text(445, 297, 9, "No：".sprintf("%04d", $destCompany->company_id)."-".sprintf("%08d", $bill->quotation_id), true);
 
             // 作成日を描画
-            $this->text(450, 100, 9, "ご請求日：".date("Y年m月d日", strtotime($bill->billing_date)), true);
+            $this->text(445, 309, 9, "ご請求日：".date("Y年m月d日", strtotime($bill->billing_date)), true);
 
             // 宛先欄を作成
             $text = "〒".$destCompany->zip1."-".$destCompany->zip2."\r\n\r\n";
@@ -112,22 +112,24 @@ class VizualizerTrade_Module_Bill_Pdf_Bill extends Vizualizer_Plugin_Module_Pdf
             if(!empty($source->operator_name)){
                 $text .= "\r\n\r\n\r\n\r\n担当者：".$source->operator_name;
             }
-            $text .= "\r\n\r\n\r\n\r\nお振込先：".$sourceCompany->bank_name." ".$sourceCompany->branch_name."\r\n\r\n";
-            $text .= "　　　　　　　　".$sourceCompany->account_type." ".$sourceCompany->account_number." ".$sourceCompany->account_name."\r\n";
-            $this->boxtext(339, 96, 260, 160, 10, $text);
+            $this->boxtext(385, 96, 260, 160, 8, $text);
 
-                    // 合計金額を描画
+            $text = "お振込先：".$sourceCompany->bank_name." ".$sourceCompany->branch_name."\r\n\r\n";
+            $text .= $sourceCompany->account_type." ".$sourceCompany->account_number." ".$sourceCompany->account_name."\r\n";
+            $this->boxtext(385, 175, 260, 160, 10, $text);
+
+            // 合計金額を描画
             $this->text(35, 310, 20, "ご請求金額： ￥".number_format($bill->total)."-", true);
 
             // 印鑑入力欄を作成
             //$this->rect(491, 98, 50, 50, 0);
             // 印鑑画像を貼付け
             if (!empty($sourceCompany->stamp)) {
-                $this->image(440, 132, $sourceCompany->stamp, 46, 46);
+                $this->image(485, 110, $sourceCompany->stamp, 70, 70);
             }
 
             // 請求名を表示
-            $this->text(35, 278, 20, "案件名：".$bill->trade_name, true);
+            $this->text(35, 285, 16, "案件名： ".$bill->trade_name, true);
 
             $this->line(35, 323, 555, 323, 1, array(3, 3));
 
